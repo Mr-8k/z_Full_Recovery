@@ -1,0 +1,10 @@
+{
+    "masterVersionFile":"https://raw.githubusercontent.com/Mr-8k/z_Full_Recovery/master/FullRec.version",
+    "modName":"Full Recovery",
+    "modVersion":
+    {
+        "major":1,
+        "minor":0,
+        "patch":2 # Can be a number, character or string (1, 2, a, b, "-RC2", etc)
+    }
+}
