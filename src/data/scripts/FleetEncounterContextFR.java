@@ -9,6 +9,7 @@ import com.fs.starfarer.api.impl.campaign.DModManager;
 import com.fs.starfarer.api.impl.campaign.FleetEncounterContext;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
 import com.fs.starfarer.api.impl.campaign.ids.Stats;
+import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.loading.VariantSource;
 import com.fs.starfarer.api.util.Misc;
 import com.fs.starfarer.api.util.WeightedRandomPicker;
@@ -21,8 +22,6 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
 
     @Override
     public List<FleetMemberAPI> getRecoverableShips(BattleAPI battle, CampaignFleetAPI winningFleet, CampaignFleetAPI otherFleet) {
-
-        List<FleetMemberAPI> storyRecoverableShips = super.getStoryRecoverableShips();
 
         storyRecoverableShips.clear();
 
@@ -47,15 +46,33 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
         all.addAll(ownCasualties);
         Collections.sort(all, new Comparator<FleetMemberData>() {
             public int compare(FleetMemberData o1, FleetMemberData o2) {
-                return o2.getMember().getVariant().getSMods().size() - o1.getMember().getVariant().getSMods().size();
+                int result = o2.getMember().getVariant().getSMods().size() - o1.getMember().getVariant().getSMods().size();
+                if (result == 0) {
+                    result = o2.getMember().getHullSpec().getHullSize().ordinal() - o1.getMember().getHullSpec().getHullSize().ordinal();
+                }
+                return result;
             }
         });
 
 
+        //Random random = Misc.getRandom(battle.getSeed(), 11);
+        Random random = Misc.getRandom(Global.getSector().getPlayerBattleSeed(), 11);
+        //System.out.println("BATTLE SEED: " + Global.getSector().getPlayerBattleSeed());
+
         // since the number of recoverable ships is limited, prefer "better" ships
-        Random random = Misc.getRandom(battle.getSeed(), 11);
         WeightedRandomPicker<FleetMemberData> enemyPicker = new WeightedRandomPicker<FleetMemberData>(random);
-        for (FleetMemberData curr : enemyCasualties) {
+
+        // doesn't matter how it's sorted, as long as it's consistent so that
+        // the order it's insertied into the picker in is the same
+        List<FleetMemberData> enemy = new ArrayList<FleetMemberData>(enemyCasualties);
+        Collections.sort(enemy, new Comparator<FleetMemberData>() {
+            public int compare(FleetMemberData o1, FleetMemberData o2) {
+                int result = o2.getMember().getId().hashCode() - o1.getMember().getId().hashCode();
+                return result;
+            }
+        });
+
+        for (FleetMemberData curr : enemy) {
             float base = 10f;
             switch (curr.getMember().getHullSpec().getHullSize()) {
                 case CAPITAL_SHIP: base = 40f; break;
@@ -75,6 +92,10 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
 
         all.addAll(sortedEnemy);
 
+//		for (FleetMemberData curr : all) {
+//			System.out.println(curr.getMember().getHullId());
+//		}
+
         CampaignFleetAPI playerFleet = Global.getSector().getPlayerFleet();
 
         int maxRecoverablePerType = Global.getSettings().getInt("maxRecoverablePerType");
@@ -84,6 +105,9 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
 
         int count = 0;
         for (FleetMemberData data : all) {
+//			if (data.getMember().getHullId().contains("legion")) {
+//				System.out.println("wefwefwefe");
+//			}
             //if (data.getMember().getHullSpec().getHints().contains(ShipTypeHints.UNBOARDABLE)) continue;
             if (Misc.isUnboardable(data.getMember())) continue;
             if (data.getStatus() != Status.DISABLED && data.getStatus() != Status.DESTROYED) continue;
@@ -124,9 +148,10 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
                     Misc.isShipRecoverable(data.getMember(), playerFleet, own, useOfficerRecovery, 1f * mult);
             boolean storyRecovery = !noRecovery && !normalRecovery;
 
+            boolean alwaysRec = data.getMember().getVariant().hasTag(Tags.VARIANT_ALWAYS_RECOVERABLE);
 
             float shipRecProb = data.getMember().getStats().getDynamic().getMod(Stats.INDIVIDUAL_SHIP_RECOVERY_MOD).computeEffective(0f);
-            if (!own && (storyRecovery || normalRecovery) && shipRecProb < 1f) {
+            if (!own && !alwaysRec && (storyRecovery || normalRecovery) && shipRecProb < 1f) {
                 float per = Global.getSettings().getFloat("probNonOwnNonRecoverablePerDMod");
                 float perAlready = Global.getSettings().getFloat("probNonOwnNonRecoverablePerAlreadyRecoverable");
                 float max = Global.getSettings().getFloat("probNonOwnNonRecoverableMax");
@@ -221,9 +246,9 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
                     wingProb = playerFleet.getStats().getDynamic().getValue(Stats.OWN_WING_RECOVERY_MOD, wingProb);
                 }
 
-                Random salvageRandom = super.getSalvageRandom();
-
-                prepareShipForRecovery(data.getMember(), own, true, !own, weaponProb, wingProb, salvageRandom);
+                boolean retain = data.getMember().getHullSpec().hasTag(Tags.TAG_RETAIN_SMODS_ON_RECOVERY) ||
+                        data.getMember().getVariant().hasTag(Tags.TAG_RETAIN_SMODS_ON_RECOVERY);
+                prepareShipForRecovery(data.getMember(), own, true, !own && !retain, weaponProb, wingProb, getSalvageRandom());
 
                 if (normalRecovery) {
                     if (result.size() < maxRecoverablePerType) {
@@ -244,6 +269,10 @@ public class FleetEncounterContextFR extends FleetEncounterContext {
 //				data.getMember().getVariant().removeTag(Tags.SHIP_RECOVERABLE);
 //			}
         }
+
+        //System.out.println("Recoverable: " + result.size() + ", story: " + storyRecoverableShips.size());
+
+
         recoverableShips.clear();
         recoverableShips.addAll(result);
         return result;
