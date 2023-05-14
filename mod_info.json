@@ -1,0 +1,13 @@
+{
+  "id":"z Full Recovery",
+  "name":"z Full Recovery",
+  "author":"Current Diable hate activist",
+  "utility":"true",
+  "version":"1.0.2",
+  "description":"Why Alex's vision is garbage and other facts",
+  "gameVersion":"0.96a-RC69",
+  "jars":["jars/FullRecovery.jar"],
+      "dependencies": [
+        {"id": "nexerelin", "name": "Nexerelin"}
+    ]
+}

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="SWP">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../Ship and Weapon Pack/jars/SWP.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

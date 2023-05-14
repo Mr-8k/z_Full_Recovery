@@ -1,0 +1,4 @@
+{
+	"maxRecoverablePerType":1000,
+	"probNonOwnNonRecoverablePerAlreadyRecoverable":0
+}
